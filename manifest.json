@@ -1,0 +1,63 @@
+{
+  "version": "1.0.0",
+  "description": "Claude AI System asset manifest",
+  "created": "2025-08-14T00:00:00Z",
+  "assets": {
+    "agents": {
+      "description": "Specialized agent library for autonomous expertise routing",
+      "url": "s3://claude-system-private/agents/agents-v1.0.tar.gz",
+      "sha256": "PLACEHOLDER_SHA256",
+      "count": 65,
+      "deploy_target": "~/agents/",
+      "version": "1.0.0"
+    },
+    "mcp_servers": {
+      "description": "CME business knowledge servers for contextual intelligence",
+      "url": "s3://claude-system-private/mcp-servers/cme-servers-v1.0.tar.gz",
+      "sha256": "PLACEHOLDER_SHA256",
+      "servers": [
+        "CME-Assets",
+        "CME-Base", 
+        "CME-Content",
+        "CME-Marketing",
+        "CME-Operations",
+        "CME-Personas",
+        "CME-Tech",
+        "CME-Website"
+      ],
+      "deploy_target": "~/mcp-servers/",
+      "version": "1.0.0"
+    },
+    "system_configs": {
+      "description": "Enhanced CLAUDE.md templates and system configurations",
+      "url": "s3://claude-system-private/system-configs/claude-enhanced-v1.0.tar.gz",
+      "sha256": "PLACEHOLDER_SHA256",
+      "deploy_target": "~/claude-system-configs/",
+      "version": "1.0.0"
+    }
+  },
+  "deployment": {
+    "phases": [
+      {
+        "name": "Agent Library",
+        "assets": ["agents"],
+        "validation": "Task tool routing with specialized responses"
+      },
+      {
+        "name": "MCP Business Intelligence", 
+        "assets": ["mcp_servers", "system_configs"],
+        "validation": "Business context integration in relevant tasks"
+      },
+      {
+        "name": "Advanced Orchestration",
+        "external_dependencies": ["claude-flow@alpha"],
+        "validation": "87 tools accessible, swarm coordination functional"
+      }
+    ]
+  },
+  "rollback": {
+    "agents": "rm -rf ~/agents/",
+    "mcp_servers": "claude mcp remove [server-name] && rm -rf ~/mcp-servers/",
+    "claude_flow": "claude mcp remove claude-flow"
+  }
+}
