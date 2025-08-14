@@ -51,20 +51,22 @@ if [[ -z "$endpoint_url" ]]; then
     endpoint_url="https://54919652c0ba9b83cb0ae04cb5ea90f3.r2.cloudflarestorage.com"
 fi
 
-# Create 1Password item
-log "Creating 1Password item 'R2-Claude-System'..."
+# Create 1Password item in Desktop Credentials vault
+log "Creating 1Password item 'R2-Claude-System' in 'Desktop Credentials' vault..."
 
 # Check if item already exists
-if OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" &>/dev/null; then
-    log "Item 'R2-Claude-System' already exists. Updating..."
+if OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --vault="Desktop Credentials" &>/dev/null; then
+    log "Item 'R2-Claude-System' already exists in Desktop Credentials vault. Updating..."
     OP_BIOMETRIC_UNLOCK_ENABLED=false op item edit "R2-Claude-System" \
+        --vault="Desktop Credentials" \
         "access-key[password]=$access_key" \
         "secret-key[password]=$secret_key" \
         "endpoint[url]=$endpoint_url"
 else
-    log "Creating new item 'R2-Claude-System'..."
+    log "Creating new item 'R2-Claude-System' in Desktop Credentials vault..."
     OP_BIOMETRIC_UNLOCK_ENABLED=false op item create \
         --category="API Credential" \
+        --vault="Desktop Credentials" \
         --title="R2-Claude-System" \
         "access-key[password]=$access_key" \
         "secret-key[password]=$secret_key" \
@@ -79,7 +81,7 @@ log "✓ You can now run './deploy.sh' to deploy the system"
 
 # Test retrieval
 log "Testing credential retrieval..."
-if OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --field="access-key" &>/dev/null; then
+if OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --vault="Desktop Credentials" --field="access-key" &>/dev/null; then
     log "✓ Credential retrieval test successful"
 else
     error "Failed to retrieve credentials from 1Password"

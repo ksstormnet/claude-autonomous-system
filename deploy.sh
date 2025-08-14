@@ -78,8 +78,8 @@ get_r2_credentials() {
     
     local access_key secret_key endpoint_url
     
-    if ! access_key=$(OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --field="access-key" 2>/dev/null); then
-        error "Failed to retrieve access-key from 1Password item 'R2-Claude-System'. 
+    if ! access_key=$(OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --vault="Desktop Credentials" --field="access-key" 2>/dev/null); then
+        error "Failed to retrieve access-key from 1Password item 'R2-Claude-System' in 'Desktop Credentials' vault. 
 Please create this item with fields:
 - access-key: Your Cloudflare R2 Access Key ID
 - secret-key: Your Cloudflare R2 Secret Access Key  
@@ -88,11 +88,11 @@ Please create this item with fields:
 Run './setup-credentials.sh' to create this item securely."
     fi
     
-    if ! secret_key=$(OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --field="secret-key" 2>/dev/null); then
+    if ! secret_key=$(OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --vault="Desktop Credentials" --field="secret-key" 2>/dev/null); then
         error "Failed to retrieve secret-key from 1Password item 'R2-Claude-System'"
     fi
     
-    if ! endpoint_url=$(OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --field="endpoint" 2>/dev/null); then
+    if ! endpoint_url=$(OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --vault="Desktop Credentials" --field="endpoint" 2>/dev/null); then
         # Use default endpoint if not specified
         endpoint_url="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
         log "Using default R2 endpoint: $endpoint_url"
