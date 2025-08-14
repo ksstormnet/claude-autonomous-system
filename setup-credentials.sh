@@ -23,15 +23,17 @@ fi
 log "Setting up secure R2 credentials in 1Password..."
 
 # Check authentication
-if ! op whoami &>/dev/null; then
+if ! OP_BIOMETRIC_UNLOCK_ENABLED=false op whoami &>/dev/null; then
     log "Please authenticate with 1Password first:"
     echo "Option 1: Desktop integration - Ensure 1Password app is running with CLI integration enabled"
-    echo "Option 2: Manual signin - op signin --account your-account.1password.com"
+    echo "Option 2: Manual signin - op signin --account your-account.1password.com"  
     echo "Option 3: Service account - export OP_SERVICE_ACCOUNT_TOKEN=your-token"
+    echo ""
+    echo "If desktop integration is available, try: OP_BIOMETRIC_UNLOCK_ENABLED=false op signin"
     error "1Password authentication required"
 fi
 
-log "Current 1Password account: $(op whoami)"
+log "Current 1Password account: $(OP_BIOMETRIC_UNLOCK_ENABLED=false op whoami)"
 
 # Collect R2 credentials securely
 echo "Please enter your Cloudflare R2 credentials:"
@@ -53,15 +55,15 @@ fi
 log "Creating 1Password item 'R2-Claude-System'..."
 
 # Check if item already exists
-if op item get "R2-Claude-System" &>/dev/null; then
+if OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" &>/dev/null; then
     log "Item 'R2-Claude-System' already exists. Updating..."
-    op item edit "R2-Claude-System" \
+    OP_BIOMETRIC_UNLOCK_ENABLED=false op item edit "R2-Claude-System" \
         "access-key[password]=$access_key" \
         "secret-key[password]=$secret_key" \
         "endpoint[url]=$endpoint_url"
 else
     log "Creating new item 'R2-Claude-System'..."
-    op item create \
+    OP_BIOMETRIC_UNLOCK_ENABLED=false op item create \
         --category="API Credential" \
         --title="R2-Claude-System" \
         "access-key[password]=$access_key" \
@@ -77,7 +79,7 @@ log "✓ You can now run './deploy.sh' to deploy the system"
 
 # Test retrieval
 log "Testing credential retrieval..."
-if op item get "R2-Claude-System" --field="access-key" &>/dev/null; then
+if OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --field="access-key" &>/dev/null; then
     log "✓ Credential retrieval test successful"
 else
     error "Failed to retrieve credentials from 1Password"

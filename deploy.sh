@@ -30,21 +30,47 @@ get_r2_credentials() {
     
     # Check 1Password authentication status
     log "Checking 1Password authentication..."
-    if ! op whoami &>/dev/null; then
-        log "1Password CLI not authenticated. Attempting signin..."
+    if ! OP_BIOMETRIC_UNLOCK_ENABLED=false op whoami &>/dev/null; then
+        log "1Password CLI not authenticated."
         
-        # Try desktop app integration first
-        if op account list &>/dev/null; then
-            log "Using 1Password desktop app integration"
+        # Check if desktop app integration works
+        if OP_BIOMETRIC_UNLOCK_ENABLED=false op account list &>/dev/null; then
+            # Try to sign in using desktop integration
+            log "Attempting desktop app signin..."
+            if ! OP_BIOMETRIC_UNLOCK_ENABLED=false op signin &>/dev/null; then
+                error "1Password desktop app integration failed. Please check:
+1. 1Password app is running
+2. Settings > Developer > 'Integrate with 1Password CLI' is enabled
+3. Try: OP_BIOMETRIC_UNLOCK_ENABLED=false op signin"
+            fi
         else
-            # Manual signin required
-            log "Manual 1Password signin required"
-            echo "Please sign in to 1Password CLI. Available methods:"
-            echo "1. Desktop integration: Ensure 1Password app is running with CLI integration enabled"
-            echo "2. Manual signin: op signin --account your-account.1password.com"
-            echo "3. Service account: Set OP_SERVICE_ACCOUNT_TOKEN environment variable"
-            error "1Password authentication required before continuing"
+            # Desktop integration not working, provide manual setup instructions
+            log "1Password desktop integration not available."
+            echo ""
+            echo "Please set up 1Password CLI authentication using one of these methods:"
+            echo ""
+            echo "METHOD 1 - Manual Account Setup:"
+            echo "  op account add --address your-account.1password.com --email your-email@example.com"
+            echo "  op signin --account your-account.1password.com"
+            echo ""
+            echo "METHOD 2 - Service Account (Recommended for automation):"
+            echo "  export OP_SERVICE_ACCOUNT_TOKEN=your-service-account-token"
+            echo ""
+            echo "METHOD 3 - Fix Desktop Integration:"
+            echo "  1. Open 1Password app"
+            echo "  2. Settings > Security > Enable system authentication"
+            echo "  3. Settings > Developer > Enable 'Integrate with 1Password CLI'"
+            echo ""
+            error "1Password authentication required. Please configure and retry."
         fi
+    fi
+    
+    # Verify authentication worked
+    local auth_user
+    if auth_user=$(OP_BIOMETRIC_UNLOCK_ENABLED=false op whoami 2>/dev/null); then
+        log "✓ 1Password authenticated as: $auth_user"
+    else
+        error "1Password authentication verification failed"
     fi
     
     # Retrieve credentials from 1Password (in memory only)
@@ -52,19 +78,21 @@ get_r2_credentials() {
     
     local access_key secret_key endpoint_url
     
-    if ! access_key=$(op item get "R2-Claude-System" --field="access-key" 2>/dev/null); then
+    if ! access_key=$(OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --field="access-key" 2>/dev/null); then
         error "Failed to retrieve access-key from 1Password item 'R2-Claude-System'. 
 Please create this item with fields:
 - access-key: Your Cloudflare R2 Access Key ID
 - secret-key: Your Cloudflare R2 Secret Access Key  
-- endpoint: https://your-account-id.r2.cloudflarestorage.com"
+- endpoint: https://your-account-id.r2.cloudflarestorage.com
+
+Run './setup-credentials.sh' to create this item securely."
     fi
     
-    if ! secret_key=$(op item get "R2-Claude-System" --field="secret-key" 2>/dev/null); then
+    if ! secret_key=$(OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --field="secret-key" 2>/dev/null); then
         error "Failed to retrieve secret-key from 1Password item 'R2-Claude-System'"
     fi
     
-    if ! endpoint_url=$(op item get "R2-Claude-System" --field="endpoint" 2>/dev/null); then
+    if ! endpoint_url=$(OP_BIOMETRIC_UNLOCK_ENABLED=false op item get "R2-Claude-System" --field="endpoint" 2>/dev/null); then
         # Use default endpoint if not specified
         endpoint_url="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
         log "Using default R2 endpoint: $endpoint_url"
