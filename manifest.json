@@ -50,14 +50,14 @@
       },
       {
         "name": "Advanced Orchestration",
-        "external_dependencies": ["claude-flow@alpha"],
-        "validation": "87 tools accessible, swarm coordination functional"
+        "external_dependencies": ["claude-flow@alpha", "@cloudflare/mcp-server-cloudflare"],
+        "validation": "87 tools accessible, swarm coordination functional, Cloudflare integration active"
       }
     ]
   },
   "rollback": {
     "agents": "rm -rf ~/agents/",
     "mcp_servers": "claude mcp remove [server-name] && rm -rf ~/mcp-servers/",
-    "claude_flow": "claude mcp remove claude-flow"
+    "orchestration": "claude mcp remove claude-flow && claude mcp remove cloudflare"
   }
 }

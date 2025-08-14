@@ -149,21 +149,27 @@ deploy_mcp_servers() {
     log "Phase 2 complete: MCP servers deployed"
 }
 
-# Phase 3: Claude-Flow Integration
-deploy_claude_flow() {
-    log "Phase 3: Deploying Claude-Flow orchestration..."
+# Phase 3: Advanced Orchestration & Cloudflare Integration
+deploy_advanced_orchestration() {
+    log "Phase 3: Deploying advanced orchestration..."
     
     # Install claude-flow
     if ! npx claude-flow@alpha init --force; then
         error "Failed to install claude-flow"
     fi
     
-    # Register MCP server
+    # Register claude-flow MCP server
     if ! claude mcp add claude-flow "npx claude-flow@alpha mcp"; then
         log "Warning: Failed to register claude-flow MCP server (may already exist)"
     fi
     
-    log "Phase 3 complete: Claude-Flow orchestration ready"
+    # Install and register Cloudflare MCP
+    log "Installing Cloudflare MCP server..."
+    if ! claude mcp add cloudflare "npx @cloudflare/mcp-server-cloudflare"; then
+        log "Warning: Failed to register Cloudflare MCP server (may already exist)"
+    fi
+    
+    log "Phase 3 complete: Advanced orchestration and Cloudflare integration ready"
 }
 
 # Validation functions
@@ -208,26 +214,26 @@ main() {
             get_r2_credentials
             deploy_mcp_servers
             ;;
-        "claude-flow"|"3")
-            deploy_claude_flow
+        "orchestration"|"3")
+            deploy_advanced_orchestration
             ;;
         "all")
             get_r2_credentials
             deploy_agents
             deploy_mcp_servers
-            deploy_claude_flow
+            deploy_advanced_orchestration
             validate_system
             ;;
         "validate")
             validate_system
             ;;
         *)
-            echo "Usage: $0 [agents|mcp|claude-flow|all|validate]"
-            echo "  agents      - Deploy agent library only"
-            echo "  mcp         - Deploy MCP servers only"
-            echo "  claude-flow - Deploy orchestration only"
-            echo "  all         - Deploy complete system (default)"
-            echo "  validate    - Validate current deployment"
+            echo "Usage: $0 [agents|mcp|orchestration|all|validate]"
+            echo "  agents        - Deploy agent library only"
+            echo "  mcp           - Deploy MCP servers only"
+            echo "  orchestration - Deploy claude-flow + Cloudflare MCP"
+            echo "  all           - Deploy complete system (default)"
+            echo "  validate      - Validate current deployment"
             exit 1
             ;;
     esac

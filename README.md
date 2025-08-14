@@ -7,6 +7,8 @@ Reproducible deployment system for autonomous multi-domain AI with safety constr
 - **65 Specialized Agents** for autonomous expertise routing
 - **8 CME Business Intelligence Servers** for contextual decision-making  
 - **Claude-Flow Orchestration** with 87 advanced tools
+- **Cloudflare MCP Integration** for R2, DNS, Workers, and security management
+- **Challenge Mode Framework** with procedural overrides for safety and skepticism
 - **Git + R2 Storage** for cross-machine reproducibility
 - **1Password Integration** for secure credential management
 
@@ -21,10 +23,10 @@ cd claude-context
 ./deploy.sh
 
 # Or deploy specific phases
-./deploy.sh agents      # Agent library only
-./deploy.sh mcp         # MCP servers only  
-./deploy.sh claude-flow # Orchestration only
-./deploy.sh validate    # Validate deployment
+./deploy.sh agents        # Agent library only
+./deploy.sh mcp           # MCP servers only  
+./deploy.sh orchestration # Claude-flow + Cloudflare MCP
+./deploy.sh validate      # Validate deployment
 ```
 
 ## Prerequisites
@@ -95,15 +97,19 @@ claude-system-private/
 ### Phase 3: Advanced Orchestration  
 - Installs claude-flow via NPX
 - Registers claude-flow MCP server
+- Installs and registers Cloudflare MCP server
 - Enables 87 advanced tools and swarm coordination
+- Provides Cloudflare R2, DNS, Workers, and security management
 
 ## Safety & Security
 
 ### Mandatory Safety Constraints
-- **85-90% certainty threshold** before agent selection
+- **Challenge Mode Framework**: Default skeptical analysis of all solutions
+- **85-90% certainty threshold** before agent selection (enhanced with challenges)
 - **Multi-agent consensus** for high-impact decisions
 - **Blast radius review** for critical operations
 - **Human approval gates** for dangerous actions
+- **Procedural Mode Override**: Disable challenges for approved execution
 
 ### Credential Security
 - R2 credentials retrieved from 1Password (preferred)
@@ -122,8 +128,9 @@ claude mcp remove cme-marketing
 # ... (repeat for each server)
 rm -rf ~/mcp-servers/
 
-# Remove claude-flow
+# Remove orchestration components
 claude mcp remove claude-flow
+claude mcp remove cloudflare
 ```
 
 ## Validation

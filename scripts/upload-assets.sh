@@ -67,7 +67,7 @@ upload_asset() {
     log "Archive created: $archive_name (SHA256: $sha256)"
     
     # Upload to R2
-    local s3_url="s3://claude-system-private/${s3_key}"
+    local s3_url="s3://claude-system/${s3_key}"
     if ! aws s3 cp "$archive_path" "$s3_url" --endpoint-url="$AWS_ENDPOINT_URL"; then
         rm -rf "$temp_dir"
         error "Failed to upload $asset_name to R2"
