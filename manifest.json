@@ -1,23 +1,23 @@
 {
   "version": "1.0.0",
   "description": "Claude AI System asset manifest",
-  "created": "2025-08-14T00:00:00Z",
+  "created": "2025-08-14T10:02:59Z",
   "assets": {
     "agents": {
       "description": "Specialized agent library for autonomous expertise routing",
-      "url": "s3://claude-system-private/agents/agents-v1.0.tar.gz",
-      "sha256": "PLACEHOLDER_SHA256",
+      "url": "s3://claude-system/agents/agents-v1.0.tar.gz",
+      "sha256": "764b62eba45db54d748adb740673540c86f2ffd29016b2b40f3778326f49546a",
       "count": 65,
       "deploy_target": "~/agents/",
       "version": "1.0.0"
     },
     "mcp_servers": {
       "description": "CME business knowledge servers for contextual intelligence",
-      "url": "s3://claude-system-private/mcp-servers/cme-servers-v1.0.tar.gz",
-      "sha256": "PLACEHOLDER_SHA256",
+      "url": "s3://claude-system/mcp-servers/cme-servers-v1.0.tar.gz",
+      "sha256": "39ec85cae05d8498f97427a70cd856f839b6b07395378dbde68e5aaa2b048964",
       "servers": [
         "CME-Assets",
-        "CME-Base", 
+        "CME-Base",
         "CME-Content",
         "CME-Marketing",
         "CME-Operations",
@@ -30,8 +30,8 @@
     },
     "system_configs": {
       "description": "Enhanced CLAUDE.md templates and system configurations",
-      "url": "s3://claude-system-private/system-configs/claude-enhanced-v1.0.tar.gz",
-      "sha256": "PLACEHOLDER_SHA256",
+      "url": "s3://claude-system/system-configs/claude-enhanced-v1.0.tar.gz",
+      "sha256": "27868734a462b53f9fb6eeda73edad3cac5c850442e0c49f262e53e27e67f637",
       "deploy_target": "~/claude-system-configs/",
       "version": "1.0.0"
     }
