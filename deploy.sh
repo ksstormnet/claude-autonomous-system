@@ -70,7 +70,20 @@ get_r2_credentials() {
     if auth_user=$(OP_BIOMETRIC_UNLOCK_ENABLED=false op whoami 2>/dev/null); then
         log "✓ 1Password authenticated as: $auth_user"
     else
-        error "1Password authentication verification failed"
+        log "⚠ 1Password authentication failed in current shell environment"
+        log "This may be due to shell session isolation or token compatibility"
+        echo ""
+        echo "WORKAROUND: Run credential retrieval in a separate terminal:"
+        echo "  cd $(pwd)"
+        echo "  ./get-r2-credentials.sh"
+        echo "  # Then manually export the displayed credentials"
+        echo ""
+        echo "Or set R2 credentials manually:"
+        echo "  export AWS_ACCESS_KEY_ID=your-access-key"
+        echo "  export AWS_SECRET_ACCESS_KEY=your-secret-key"
+        echo "  export AWS_ENDPOINT_URL=your-endpoint"
+        echo ""
+        error "1Password authentication required for secure deployment"
     fi
     
     # Retrieve credentials from 1Password (in memory only)
