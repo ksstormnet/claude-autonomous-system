@@ -1,0 +1,48 @@
+
+# Sensitive credential files
+r2-creds.txt
+*.key
+*.pem
+.env
+.env.local
+
+# Claude Flow and orchestration generated files  
+.claude/
+.claude-flow/
+.mcp.json
+claude-flow.config.json
+.swarm/
+.hive-mind/
+.roo/
+.roomodes
+memory/
+coordination/
+node_modules/
+.wrangler/
+
+# Database files
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+
+# Claude Flow executables
+claude-flow
+claude-flow.bat
+claude-flow.ps1
+hive-mind-prompt-*.txt
+
+# Test and temporary files
+test-*.sh
+get-r2-credentials.sh
+deploy-aws-legacy.sh
+
+# OS and editor files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

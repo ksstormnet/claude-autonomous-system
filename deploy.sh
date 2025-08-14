@@ -19,9 +19,21 @@ error() {
     exit 1
 }
 
-# Secure Credential Management - 1Password Only (No Filesystem Storage)
+# Secure Credential Management - 1Password with Environment Fallback
 get_r2_credentials() {
-    log "Retrieving R2 credentials securely from 1Password..."
+    log "Retrieving R2 credentials..."
+    
+    # Method 1: Check if credentials are already in environment
+    if [[ -n "${AWS_ACCESS_KEY_ID:-}" && -n "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
+        log "✓ Using R2 credentials from environment variables"
+        if [[ -z "${AWS_ENDPOINT_URL:-}" ]]; then
+            export AWS_ENDPOINT_URL="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+        fi
+        return 0
+    fi
+    
+    # Method 2: Try 1Password integration
+    log "Attempting secure retrieval from 1Password..."
     
     # Verify 1Password CLI is available
     if ! command -v op &> /dev/null; then
