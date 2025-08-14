@@ -42,33 +42,49 @@ cd claude-context
 - **1Password CLI** (`op`) for secure credential management
 - **Git** for version control and updates
 
-### R2 Storage Setup
+### Secure Credential Setup
 
-1. Create Cloudflare R2 bucket: `claude-system-private`
-2. Generate R2 API tokens with read/write access
-3. Store credentials in 1Password:
+The system uses **1Password CLI** for secure credential management with **zero filesystem storage**.
+
+1. **Install 1Password CLI** (if not already installed):
+   ```bash
+   curl -sSfL https://downloads.1password.com/linux/keys/1password.asc | gpg --dearmor --output /usr/share/keyrings/1password-archive-keyring.gpg
+   echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/amd64 stable main' | sudo tee /etc/apt/sources.list.d/1password.list
+   sudo apt update && sudo apt install 1password-cli
    ```
-   Vault: vault
-   Item: R2-Claude-System
-   Fields:
-     - access-key: <your-r2-access-key>
-     - secret-key: <your-r2-secret-key>  
-     - endpoint: https://<account-id>.r2.cloudflarestorage.com
+
+2. **Create Cloudflare R2 bucket**: `claude-system-private`
+
+3. **Generate R2 API tokens** with read/write access
+
+4. **Store credentials securely**:
+   ```bash
+   # Run the secure setup script
+   ./setup-credentials.sh
    ```
+   
+   This creates a 1Password item `R2-Claude-System` with:
+   - `access-key`: Your Cloudflare R2 Access Key ID
+   - `secret-key`: Your Cloudflare R2 Secret Access Key  
+   - `endpoint`: https://account-id.r2.cloudflarestorage.com
+
+**Security Features:**
+- ✅ Credentials loaded in memory only during deployment
+- ✅ No credential storage in files, git, or filesystem
+- ✅ 1Password authenticated access only
+- ✅ Credentials cleared after deployment
 
 ## Asset Management
 
 ### Initial Asset Upload
 
 ```bash
-# Set R2 credentials
-export AWS_ACCESS_KEY_ID="your-access-key"
-export AWS_SECRET_ACCESS_KEY="your-secret-key"
-export AWS_ENDPOINT_URL="your-r2-endpoint"
-
+# Ensure 1Password credentials are configured (see Secure Credential Setup above)
 # Upload assets (requires backup source at /mnt/installer)
 ./scripts/upload-assets.sh
 ```
+
+**Note:** Asset upload script automatically retrieves R2 credentials from 1Password securely.
 
 ### Asset Structure in R2
 

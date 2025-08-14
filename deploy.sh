@@ -19,6 +19,70 @@ error() {
     exit 1
 }
 
+# Secure Credential Management - 1Password Only (No Filesystem Storage)
+get_r2_credentials() {
+    log "Retrieving R2 credentials securely from 1Password..."
+    
+    # Verify 1Password CLI is available
+    if ! command -v op &> /dev/null; then
+        error "1Password CLI not found. Install with: curl -sSfL https://downloads.1password.com/linux/keys/1password.asc | gpg --dearmor --output /usr/share/keyrings/1password-archive-keyring.gpg && echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/amd64 stable main' | sudo tee /etc/apt/sources.list.d/1password.list && sudo apt update && sudo apt install 1password-cli"
+    fi
+    
+    # Check 1Password authentication status
+    log "Checking 1Password authentication..."
+    if ! op whoami &>/dev/null; then
+        log "1Password CLI not authenticated. Attempting signin..."
+        
+        # Try desktop app integration first
+        if op account list &>/dev/null; then
+            log "Using 1Password desktop app integration"
+        else
+            # Manual signin required
+            log "Manual 1Password signin required"
+            echo "Please sign in to 1Password CLI. Available methods:"
+            echo "1. Desktop integration: Ensure 1Password app is running with CLI integration enabled"
+            echo "2. Manual signin: op signin --account your-account.1password.com"
+            echo "3. Service account: Set OP_SERVICE_ACCOUNT_TOKEN environment variable"
+            error "1Password authentication required before continuing"
+        fi
+    fi
+    
+    # Retrieve credentials from 1Password (in memory only)
+    log "Retrieving R2 credentials from 1Password item 'R2-Claude-System'..."
+    
+    local access_key secret_key endpoint_url
+    
+    if ! access_key=$(op item get "R2-Claude-System" --field="access-key" 2>/dev/null); then
+        error "Failed to retrieve access-key from 1Password item 'R2-Claude-System'. 
+Please create this item with fields:
+- access-key: Your Cloudflare R2 Access Key ID
+- secret-key: Your Cloudflare R2 Secret Access Key  
+- endpoint: https://your-account-id.r2.cloudflarestorage.com"
+    fi
+    
+    if ! secret_key=$(op item get "R2-Claude-System" --field="secret-key" 2>/dev/null); then
+        error "Failed to retrieve secret-key from 1Password item 'R2-Claude-System'"
+    fi
+    
+    if ! endpoint_url=$(op item get "R2-Claude-System" --field="endpoint" 2>/dev/null); then
+        # Use default endpoint if not specified
+        endpoint_url="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+        log "Using default R2 endpoint: $endpoint_url"
+    fi
+    
+    # Export credentials to current session only (no filesystem storage)
+    export AWS_ACCESS_KEY_ID="$access_key"
+    export AWS_SECRET_ACCESS_KEY="$secret_key"
+    export AWS_ENDPOINT_URL="$endpoint_url"
+    
+    # Verify credentials are set
+    if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" ]]; then
+        error "Failed to export R2 credentials from 1Password"
+    fi
+    
+    log "✓ R2 credentials securely loaded from 1Password (session only, no disk storage)"
+}
+
 # Verify Cloudflare authentication
 verify_cf_auth() {
     log "Verifying Cloudflare authentication..."
@@ -155,11 +219,8 @@ deploy_advanced_orchestration() {
         log "Warning: Failed to register Cloudflare MCP server (may already exist)"
     fi
     
-    # Set environment variable for future CF operations
-    if ! grep -q "CLOUDFLARE_ACCOUNT_ID" ~/.bashrc; then
-        echo "export CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> ~/.bashrc
-        log "✓ Added CLOUDFLARE_ACCOUNT_ID to ~/.bashrc"
-    fi
+    # Note: CLOUDFLARE_ACCOUNT_ID managed via environment, not persisted to disk
+    log "Using CLOUDFLARE_ACCOUNT_ID: $CLOUDFLARE_ACCOUNT_ID (session only)"
     
     log "✓ Phase 3 complete: Native Cloudflare integration active"
 }
@@ -208,10 +269,12 @@ main() {
     case "$phase" in
         "agents"|"1")
             verify_cf_auth
+            get_r2_credentials
             deploy_agents
             ;;
         "mcp"|"2")
             verify_cf_auth
+            get_r2_credentials
             deploy_mcp_servers
             ;;
         "orchestration"|"3")
@@ -219,6 +282,7 @@ main() {
             ;;
         "all")
             verify_cf_auth
+            get_r2_credentials
             deploy_agents
             deploy_mcp_servers
             deploy_advanced_orchestration
@@ -238,6 +302,15 @@ main() {
             echo ""
             echo "Environment Variables:"
             echo "  CLOUDFLARE_ACCOUNT_ID - CF Account ID (default: 54919652c0ba9b83cb0ae04cb5ea90f3)"
+            echo ""
+            echo "Secure Credential Requirements:"
+            echo "  - 1Password CLI must be installed and authenticated"
+            echo "  - 1Password item 'R2-Claude-System' with fields:"
+            echo "    * access-key: Cloudflare R2 Access Key ID"
+            echo "    * secret-key: Cloudflare R2 Secret Access Key"
+            echo "    * endpoint: https://account-id.r2.cloudflarestorage.com (optional)"
+            echo ""
+            echo "Security: Credentials loaded in memory only, never stored on disk"
             exit 1
             ;;
     esac
