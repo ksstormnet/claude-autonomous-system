@@ -1,13 +1,12 @@
 #!/bin/bash
-# Claude AI System Deployment Script - Cloudflare Native Version
-# Deploys autonomous multi-domain AI system using Cloudflare toolchain
+# Claude AI System Deployment Script
+# Deploys autonomous multi-domain AI system with safety constraints
 set -euo pipefail
 
 # Configuration
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MANIFEST_FILE="${REPO_ROOT}/manifest.json"
 DEPLOY_ROOT="${HOME}"
-CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-54919652c0ba9b83cb0ae04cb5ea90f3}"
 
 # Logging setup
 log() {
@@ -19,40 +18,63 @@ error() {
     exit 1
 }
 
-# Verify Cloudflare authentication
-verify_cf_auth() {
-    log "Verifying Cloudflare authentication..."
+# Credential management with 1Password integration
+get_r2_credentials() {
+    local access_key=""
+    local secret_key=""
+    local endpoint=""
     
-    if ! command -v npx &> /dev/null; then
-        error "Node.js/NPX not found. Please install Node.js"
+    # Try 1Password first
+    if command -v op &> /dev/null && op account get &>/dev/null; then
+        log "Attempting to retrieve R2 credentials from 1Password..."
+        access_key=$(op read "op://vault/R2-Claude-System/access-key" 2>/dev/null || true)
+        secret_key=$(op read "op://vault/R2-Claude-System/secret-key" 2>/dev/null || true)
+        endpoint=$(op read "op://vault/R2-Claude-System/endpoint" 2>/dev/null || true)
     fi
     
-    # Test wrangler authentication
-    if ! CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" npx wrangler whoami &>/dev/null; then
-        error "Wrangler authentication failed. Please run: npx wrangler login"
+    # Fall back to environment variables
+    if [[ -z "$access_key" ]]; then
+        access_key="${CLAUDE_R2_ACCESS_KEY:-}"
+        secret_key="${CLAUDE_R2_SECRET_KEY:-}"
+        endpoint="${CLAUDE_R2_ENDPOINT:-}"
     fi
     
-    log "✓ Cloudflare authentication verified for account: $CLOUDFLARE_ACCOUNT_ID"
+    # Prompt as last resort
+    if [[ -z "$access_key" ]]; then
+        read -p "R2 Access Key: " access_key
+        read -s -p "R2 Secret Key: " secret_key
+        echo
+        read -p "R2 Endpoint (e.g., https://your-account.r2.cloudflarestorage.com): " endpoint
+    fi
+    
+    if [[ -z "$access_key" || -z "$secret_key" || -z "$endpoint" ]]; then
+        error "R2 credentials not found. Please set up 1Password or environment variables."
+    fi
+    
+    # Export for rclone/aws commands
+    export AWS_ACCESS_KEY_ID="$access_key"
+    export AWS_SECRET_ACCESS_KEY="$secret_key"
+    export AWS_ENDPOINT_URL="$endpoint"
 }
 
-# Asset download and verification using Wrangler
+# Asset download and verification
 download_asset() {
     local asset_name="$1"
-    local bucket_key="$2"  # Format: bucket/path/file.tar.gz
+    local url="$2"
     local expected_sha256="$3"
     local target_dir="$4"
     
-    log "Downloading $asset_name via Cloudflare R2..."
+    log "Downloading $asset_name..."
     
     # Create temporary directory
     local temp_dir
     temp_dir=$(mktemp -d)
-    local temp_file="${temp_dir}/$(basename "$bucket_key")"
+    local temp_file="${temp_dir}/$(basename "$url")"
     
-    # Download with Wrangler
-    if ! CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" npx wrangler r2 object get "$bucket_key" --file "$temp_file" --remote; then
+    # Download with aws cli (compatible with R2)
+    if ! aws s3 cp "$url" "$temp_file" --endpoint-url="$AWS_ENDPOINT_URL"; then
         rm -rf "$temp_dir"
-        error "Failed to download $asset_name from R2: $bucket_key"
+        error "Failed to download $asset_name from $url"
     fi
     
     # Verify checksum
@@ -72,12 +94,12 @@ download_asset() {
     fi
     
     rm -rf "$temp_dir"
-    log "✓ Successfully deployed $asset_name to $target_dir"
+    log "Successfully deployed $asset_name to $target_dir"
 }
 
 # Phase 1: Agent Library Deployment
 deploy_agents() {
-    log "Phase 1: Deploying agent library via Cloudflare R2..."
+    log "Phase 1: Deploying agent library..."
     
     if [[ ! -f "$MANIFEST_FILE" ]]; then
         error "Manifest file not found: $MANIFEST_FILE"
@@ -89,13 +111,9 @@ deploy_agents() {
     agents_sha256=$(jq -r '.assets.agents.sha256' "$MANIFEST_FILE")
     agents_count=$(jq -r '.assets.agents.count' "$MANIFEST_FILE")
     
-    # Convert S3 URL to Wrangler format (claude-system/agents/agents-v1.0.tar.gz)
-    local bucket_key
-    bucket_key=$(echo "$agents_url" | sed 's|s3://||')
-    
     # Download and deploy
     local agents_target="${DEPLOY_ROOT}/agents"
-    download_asset "agents" "$bucket_key" "$agents_sha256" "$agents_target"
+    download_asset "agents" "$agents_url" "$agents_sha256" "$agents_target"
     
     # Validate count
     local actual_count
@@ -104,25 +122,21 @@ deploy_agents() {
         error "Agent count mismatch. Expected: $agents_count, Found: $actual_count"
     fi
     
-    log "✓ Phase 1 complete: $actual_count agents deployed via Cloudflare R2"
+    log "Phase 1 complete: $actual_count agents deployed"
 }
 
 # Phase 2: MCP Server Deployment
 deploy_mcp_servers() {
-    log "Phase 2: Deploying MCP servers via Cloudflare R2..."
+    log "Phase 2: Deploying MCP servers..."
     
     # Parse manifest for MCP servers
     local mcp_url mcp_sha256
     mcp_url=$(jq -r '.assets.mcp_servers.url' "$MANIFEST_FILE")
     mcp_sha256=$(jq -r '.assets.mcp_servers.sha256' "$MANIFEST_FILE")
     
-    # Convert S3 URL to Wrangler format
-    local bucket_key
-    bucket_key=$(echo "$mcp_url" | sed 's|s3://||')
-    
     # Download and deploy
     local mcp_target="${DEPLOY_ROOT}/mcp-servers"
-    download_asset "mcp-servers" "$bucket_key" "$mcp_sha256" "$mcp_target"
+    download_asset "mcp-servers" "$mcp_url" "$mcp_sha256" "$mcp_target"
     
     # Install dependencies for each server
     for server_dir in "$mcp_target"/*; do
@@ -132,12 +146,12 @@ deploy_mcp_servers() {
         fi
     done
     
-    log "✓ Phase 2 complete: MCP servers deployed via Cloudflare R2"
+    log "Phase 2 complete: MCP servers deployed"
 }
 
 # Phase 3: Advanced Orchestration & Cloudflare Integration
 deploy_advanced_orchestration() {
-    log "Phase 3: Deploying advanced orchestration with native CF integration..."
+    log "Phase 3: Deploying advanced orchestration..."
     
     # Install claude-flow
     if ! npx claude-flow@alpha init --force; then
@@ -149,24 +163,18 @@ deploy_advanced_orchestration() {
         log "Warning: Failed to register claude-flow MCP server (may already exist)"
     fi
     
-    # Register Cloudflare MCP with proper account ID
-    log "Configuring native Cloudflare MCP integration..."
-    if ! claude mcp add cloudflare "npx @cloudflare/mcp-server-cloudflare run $CLOUDFLARE_ACCOUNT_ID"; then
+    # Install and register Cloudflare MCP
+    log "Installing Cloudflare MCP server..."
+    if ! claude mcp add cloudflare "npx @cloudflare/mcp-server-cloudflare"; then
         log "Warning: Failed to register Cloudflare MCP server (may already exist)"
     fi
     
-    # Set environment variable for future CF operations
-    if ! grep -q "CLOUDFLARE_ACCOUNT_ID" ~/.bashrc; then
-        echo "export CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> ~/.bashrc
-        log "✓ Added CLOUDFLARE_ACCOUNT_ID to ~/.bashrc"
-    fi
-    
-    log "✓ Phase 3 complete: Native Cloudflare integration active"
+    log "Phase 3 complete: Advanced orchestration and Cloudflare integration ready"
 }
 
 # Validation functions
 validate_system() {
-    log "Validating Cloudflare-native deployment..."
+    log "Validating system deployment..."
     
     # Check agents
     if [[ -d "${DEPLOY_ROOT}/agents" ]]; then
@@ -188,61 +196,52 @@ validate_system() {
         return 1
     fi
     
-    # Test Cloudflare authentication
-    if CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" npx wrangler whoami &>/dev/null; then
-        log "✓ Cloudflare authentication working"
-    else
-        log "✗ Cloudflare authentication failed"
-        return 1
-    fi
-    
-    log "✓ Cloudflare-native system validation complete"
+    log "System validation complete"
 }
 
 # Main deployment function
 main() {
     local phase="${1:-all}"
     
-    log "Starting Claude AI System deployment with native Cloudflare integration (phase: $phase)"
+    log "Starting Claude AI System deployment (phase: $phase)"
     
     case "$phase" in
         "agents"|"1")
-            verify_cf_auth
+            get_r2_credentials
             deploy_agents
             ;;
         "mcp"|"2")
-            verify_cf_auth
+            get_r2_credentials
             deploy_mcp_servers
             ;;
         "orchestration"|"3")
             deploy_advanced_orchestration
             ;;
         "all")
-            verify_cf_auth
+            get_r2_credentials
             deploy_agents
             deploy_mcp_servers
             deploy_advanced_orchestration
             validate_system
             ;;
         "validate")
-            verify_cf_auth
             validate_system
             ;;
         *)
             echo "Usage: $0 [agents|mcp|orchestration|all|validate]"
-            echo "  agents        - Deploy agent library via CF R2"
-            echo "  mcp           - Deploy MCP servers via CF R2"
-            echo "  orchestration - Deploy claude-flow + native CF MCP"
+            echo "  agents        - Deploy agent library only"
+            echo "  mcp           - Deploy MCP servers only"
+            echo "  orchestration - Deploy claude-flow + Cloudflare MCP"
             echo "  all           - Deploy complete system (default)"
-            echo "  validate      - Validate CF-native deployment"
-            echo ""
-            echo "Environment Variables:"
-            echo "  CLOUDFLARE_ACCOUNT_ID - CF Account ID (default: 54919652c0ba9b83cb0ae04cb5ea90f3)"
+            echo "  validate      - Validate current deployment"
             exit 1
             ;;
     esac
     
-    log "✓ Cloudflare-native deployment complete!"
+    # Clear credentials from environment
+    unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_ENDPOINT_URL
+    
+    log "Deployment complete!"
 }
 
 # Execute main function

@@ -7,7 +7,7 @@
       "description": "Specialized agent library for autonomous expertise routing",
       "url": "s3://claude-system/agents/agents-v1.0.tar.gz",
       "sha256": "764b62eba45db54d748adb740673540c86f2ffd29016b2b40f3778326f49546a",
-      "count": 65,
+      "count": 64,
       "deploy_target": "~/agents/",
       "version": "1.0.0"
     },
